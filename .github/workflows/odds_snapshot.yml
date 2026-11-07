@@ -1,0 +1,65 @@
+# Päivittäinen kerroinsnapshot The Odds API:sta (PLAN 5 ja 9.1).
+# Raakavastaukset commitoidaan kansioon snapshots/odds_api/, koska kerroinliikettä ei voi kerätä jälkikäteen.
+# Kulutus: 4 krediittiä per ajo (2 sarjaa × eu × 2 markkinaa), noin 120 kuukaudessa (ilmaistaso 500).
+# Avain luetaan repon salaisuudesta ODDS_API_KEY; sitä ei tulosteta.
+name: Kerroinsnapshot
+
+on:
+  schedule:
+    - cron: "17 7 * * *"   # 07:17 UTC = 9:17 Suomen talviaikaa, 10:17 kesäaikaa
+  workflow_dispatch: {}    # käsin ajo testausta varten
+
+permissions:
+  contents: write
+
+concurrency:
+  group: odds-snapshot
+  cancel-in-progress: false
+
+jobs:
+  snapshot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Asenna
+        run: pip install -e .
+
+      - name: Hae kertoimet
+        id: fetch
+        env:
+          ODDS_API_KEY: ${{ secrets.ODDS_API_KEY }}
+        # Raakavastaus tallentuu ennen jäsennystä, joten commit tehdään myös, jos jäsennys
+        # epäonnistuu (esim. uusi joukkuenimi). Ajo merkitään silti epäonnistuneeksi.
+        run: |
+          set +e
+          bagent odds snapshot
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Commitoi snapshotit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add snapshots/odds_api
+          if git diff --cached --quiet; then
+            echo "Ei uusia snapshotteja"
+            exit 0
+          fi
+          git commit -m "Kerroinsnapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+          for i in 1 2 3; do
+            git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
+            sleep $((i * 5))
+          done
+          exit 1
+
+      - name: Tarkista hakutulos
+        if: steps.fetch.outputs.status != '0'
+        run: |
+          echo "bagent odds snapshot palautti koodin ${{ steps.fetch.outputs.status }}; katso lokista tuntemattomat joukkuenimet tai krediitit."
+          exit 1

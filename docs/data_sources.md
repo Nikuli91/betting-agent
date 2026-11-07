@@ -115,6 +115,7 @@ Lähtöparametrit ovat K = 20, kotietu 60, uusi pääsarjajoukkue 1500, uusi sy�
 - `odds` (`source='odds_api'`, `phase='snapshot'`) sisältää vain 1X2:n ja 2.5-linjan. Haamukertoimet suodatetaan: ottelu on jo alkanut, tai markkinan `last_update` on yli 180 min hakuhetkeä vanhempi.
 - `available_at` = hakuhetki.
 - **Poikkeama PLANista 5:** PLAN käskee hakea vain terävät ja käyttäjän välittäjät. eu-alue maksaa saman krediittimäärän, joten koko alue tallennetaan. Vaiheen 4 konsensusstrategia tarvitsee useita välittäjiä.
+- **Ajastus:** GitHub Actions (`.github/workflows/odds_snapshot.yml`) ajaa snapshotin kerran päivässä klo 07.17 UTC (Suomessa 9.17 talvella, 10.17 kesällä) ja commitoi raakatiedostot `main`-haaraan. Avain on repon salaisuutena `ODDS_API_KEY`. Kulutus on noin 120 krediittiä kuukaudessa, eikä Claude-käyttöä kulu.
 - `match_id` muodostetaan samalla kaavalla kuin football-datassa (sarja, UTC-päivä, koti, vieras). Liitos football-datan otteluun tarkistetaan, kun ensimmäiset snapshotatut ottelut ilmestyvät football-datan CSV:hen.
 
 ## Joukkuenimet
