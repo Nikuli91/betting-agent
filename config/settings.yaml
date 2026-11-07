@@ -29,7 +29,7 @@ big_wins:
 devig_method: power
 bookmakers:
   sharp: [pinnacle, betfair_ex_eu]
-  user: [veikkaus]
+  user: [coolbet, unibet_se, betsson, nordicbet, leovegas_se]   # The Odds API -avaimet; Veikkaus ei ole rajapinnassa
 sharp_reference:
   historical: [pinnacle, betfair_exchange]   # ensisijainen ensin
   fallback: market_avg     # vain jos kumpaakaan ei ole; käyttö merkitään ja raportoidaan
