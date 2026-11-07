@@ -95,10 +95,28 @@ Lähtöparametrit ovat K = 20, kotietu 60, uusi pääsarjajoukkue 1500, uusi sy�
 
 ## The Odds API
 
-Isäntä `api.the-odds-api.com` on sallittu. Sitä ei ole vielä käytetty, koska avainta ei ole. Rajapinnan dokumentaatiota ei ole todennettu. Avain välitetään kyselyparametrina (`apiKey`, kolmannen osapuolen lähteiden mukaan; virallista dokumentaatiota ei ole todennettu). Ympäristön verkkosalaisuus lisää vain otsakkeen, joten avain luetaan ympäristömuuttujasta `ODDS_API_KEY` (pilviympäristön asetukset) tai `.env`:stä (`config.secret()`). Avain peitetään lokeista.
+**Todennettu 2026-11-07 oikeilla kutsuilla.** Dokumentaatiosivu (`the-odds-api.com`) ei ole sallittu tässä ympäristössä, joten rakenne todennettiin vastauksista. Isäntä `api.the-odds-api.com` toimii. Avain annetaan kyselyparametrina `apiKey` ja luetaan ympäristömuuttujasta `ODDS_API_KEY` tai `.env`:stä. Avain peitetään virheviesteistä (`***`), ja sille on testi.
 
-**Avoin kysymys:** sisältääkö palvelu Veikkauksen kertoimet. Jos ei, Veikkauksen kertoimet syötetään käsin (`data/manual/odds/`) tai haetaan Veikkauksen omasta rajapinnasta, jonka saatavuus ja käyttöehdot on selvitettävä.
+- `GET /v4/sports` palauttaa listan `{key, group, title, description, active, has_outrights}`. Kutsu on ilmainen (`x-requests-last: 0`). `soccer_epl` ja `soccer_germany_bundesliga` ovat aktiivisia.
+- `GET /v4/sports/{sport}/odds?regions=eu&markets=h2h,totals&oddsFormat=decimal&dateFormat=iso` palauttaa ottelut muodossa `{id, sport_key, sport_title, commence_time (UTC, Z), home_team, away_team, bookmakers[]}`.
+  - `bookmakers[]` = `{key, title, last_update, markets[]}`
+  - `markets[]` = `{key, last_update, outcomes[]}`
+  - h2h-markkinan `outcomes` = `{name, price}`, jossa nimi on joukkue tai `"Draw"`
+  - totals-markkinan `outcomes` = `{name: Over|Under, price, point}`
+- **Kulutus:** `x-requests-last` = alueet × markkinat (eu × 2 = 2 krediittiä per sarja). Otsakkeet ovat `x-requests-remaining`, `x-requests-used` ja `x-requests-last`. Tili on ilmaistasolla: 500 krediittiä kuukaudessa. Snapshot molemmista sarjoista maksaa 4 krediittiä, joten kuukaudessa ehtii noin 120 snapshotia.
+- **eu-alueen välittäjät (7.11.2026):** betanysports, betclic_fr, betfair_ex_eu, betonlineag, betsson, codere_it, coolbet, everygame, gtbets, leovegas_se, marathonbet, matchbook, mybookieag, nordicbet, onexbet, pinnacle, pmu_fr, sport888, tipico_de, unibet_fr, unibet_nl, unibet_se, williamhill, winamax_de, winamax_fr.
+- **Veikkaus ei ole eu-alueella.** Muita alueita (uk, us, au) ei ole tarkistettu, koska jokainen alue maksaa krediittejä. Veikkaus tuskin on niissäkään. Suomesta pelattavia välittäjiä listalla ovat esim. coolbet, betsson, nordicbet, unibet_se ja leovegas_se.
+- **Yli/alle 2,5:** terävien välittäjien päälinja on usein 2.75 tai 3.0. Pinnaclella 2.5-linja oli 3/36 ottelussa, ja betfair_ex_eu ei tarjonnut totals-markkinaa lainkaan. Live-vertailukerroin yli/alle 2,5 -markkinalle on siksi heikko (ks. vaihe 4).
+- **Katteet, ensimmäinen snapshot, 1X2:** betfair_ex_eu 1,0 %, matchbook 1,1 %, onexbet 1,6 %, coolbet 2,7 %, unibet_se 2,9 %, pinnacle 4,1 %, nordicbet 5,6 %, betsson 5,8 %, leovegas_se 6,5 %.
+
+**Tallennus** (`src/bagent/data/odds_api.py`, `bagent odds snapshot`):
+- Raakavastaus tallennetaan gzipattuna hakemistoon `snapshots/odds_api/YYYY/MM/DD/<SARJA>_<UTC>.json.gz`. Hakemisto on versionhallinnassa, koska pilvikontti on lyhytikäinen. `bagent data build` rakentaa taulut uudelleen raakatiedostoista.
+- `odds_snapshots` sisältää kaikki rivit: kaikki välittäjät ja linjat sekä `last_update`.
+- `odds` (`source='odds_api'`, `phase='snapshot'`) sisältää vain 1X2:n ja 2.5-linjan. Haamukertoimet suodatetaan: ottelu on jo alkanut, tai markkinan `last_update` on yli 180 min hakuhetkeä vanhempi.
+- `available_at` = hakuhetki.
+- **Poikkeama PLANista 5:** PLAN käskee hakea vain terävät ja käyttäjän välittäjät. eu-alue maksaa saman krediittimäärän, joten koko alue tallennetaan. Vaiheen 4 konsensusstrategia tarvitsee useita välittäjiä.
+- `match_id` muodostetaan samalla kaavalla kuin football-datassa (sarja, UTC-päivä, koti, vieras). Liitos football-datan otteluun tarkistetaan, kun ensimmäiset snapshotatut ottelut ilmestyvät football-datan CSV:hen.
 
 ## Joukkuenimet
 
-`src/bagent/data/team_registry.csv`: 108 joukkuetta. Kanoninen id on `eng_`/`ger_` + football-datan nimen slug. Testit tarkistavat, että jokainen ladatuissa tiedostoissa esiintyvä nimi mappautuu ja että kannan jokaisella ottelulla on pari. `odds_api`- ja `understat`-sarakkeet ovat tyhjiä, kunnes nimet on todennettu lähteestä.
+`src/bagent/data/team_registry.csv`: 108 joukkuetta. Kanoninen id on `eng_`/`ger_` + football-datan nimen slug. Testit tarkistavat, että jokainen ladatuissa tiedostoissa esiintyvä nimi mappautuu ja että kannan jokaisella ottelulla on pari. `odds_api`-sarake on täytetty kauden 2026/27 pääsarjajoukkueille (38 kpl, todennettu snapshotista 2026-11-07). Testi tarkistaa, että jokaisella nykykauden joukkueella on nimi.

@@ -1,3 +1,4 @@
+import pytest
 import pandas as pd
 
 from bagent.data.understat_kaggle import pair_matches
@@ -20,6 +21,9 @@ def test_pairs_home_and_away_rows():
 
 def test_real_db_understat_goals_match_results(real_con):
     """Tuonti hyväksyy vain ottelut, joiden maalit täsmäävät; kattavuus 2020–2023 täydellinen."""
+    from bagent.data.understat_kaggle import RAW_PATH
+    if not RAW_PATH.exists():
+        pytest.skip(f"Kaggle-aineisto puuttuu ({RAW_PATH}); xG-kattavuutta ei voi tarkistaa")
     n = real_con.execute("""SELECT count(*) FROM matches m WHERE m.league IN ('EPL','BUNDESLIGA')
         AND m.season BETWEEN 2020 AND 2023
         AND NOT EXISTS (SELECT 1 FROM xg WHERE xg.match_id = m.match_id)""").fetchone()[0]

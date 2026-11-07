@@ -1,104 +1,104 @@
 team_id,display_name,football_data,odds_api,understat
-eng_arsenal,Arsenal,Arsenal,,Arsenal
-eng_aston_villa,Aston Villa,Aston Villa,,Aston Villa
-ger_augsburg,Augsburg,Augsburg,,Augsburg
+eng_arsenal,Arsenal,Arsenal,Arsenal,Arsenal
+eng_aston_villa,Aston Villa,Aston Villa,Aston Villa,Aston Villa
+ger_augsburg,Augsburg,Augsburg,Augsburg,Augsburg
 eng_barnsley,Barnsley,Barnsley,,
-ger_bayern_munich,Bayern Munich,Bayern Munich,,Bayern Munich
+ger_bayern_munich,Bayern Munich,Bayern Munich,Bayern Munich,Bayern Munich
 ger_bielefeld,Bielefeld,Bielefeld,,Arminia Bielefeld
 eng_birmingham,Birmingham,Birmingham,,
 eng_blackburn,Blackburn,Blackburn,,
 eng_blackpool,Blackpool,Blackpool,,
 ger_bochum,Bochum,Bochum,,Bochum
 eng_bolton,Bolton,Bolton,,
-eng_bournemouth,Bournemouth,Bournemouth,,Bournemouth
+eng_bournemouth,Bournemouth,Bournemouth,Bournemouth,Bournemouth
 ger_braunschweig,Braunschweig,Braunschweig,,
-eng_brentford,Brentford,Brentford,,Brentford
-eng_brighton,Brighton,Brighton,,Brighton
+eng_brentford,Brentford,Brentford,Brentford,Brentford
+eng_brighton,Brighton,Brighton,Brighton and Hove Albion,Brighton
 eng_bristol_city,Bristol City,Bristol City,,
 eng_burnley,Burnley,Burnley,,Burnley
 eng_burton,Burton,Burton,,
 eng_cardiff,Cardiff,Cardiff,,Cardiff
 eng_charlton,Charlton,Charlton,,
-eng_chelsea,Chelsea,Chelsea,,Chelsea
+eng_chelsea,Chelsea,Chelsea,Chelsea,Chelsea
 ger_cottbus,Cottbus,Cottbus,,
-eng_coventry,Coventry,Coventry,,
-eng_crystal_palace,Crystal Palace,Crystal Palace,,Crystal Palace
+eng_coventry,Coventry,Coventry,Coventry City,
+eng_crystal_palace,Crystal Palace,Crystal Palace,Crystal Palace,Crystal Palace
 ger_darmstadt,Darmstadt,Darmstadt,,Darmstadt
 eng_derby,Derby,Derby,,
-ger_dortmund,Dortmund,Dortmund,,Borussia Dortmund
+ger_dortmund,Dortmund,Dortmund,Borussia Dortmund,Borussia Dortmund
 ger_dresden,Dresden,Dresden,,
 ger_duisburg,Duisburg,Duisburg,,
-ger_ein_frankfurt,Ein Frankfurt,Ein Frankfurt,,Eintracht Frankfurt
-ger_elversberg,Elversberg,Elversberg,,
+ger_ein_frankfurt,Ein Frankfurt,Ein Frankfurt,Eintracht Frankfurt,Eintracht Frankfurt
+ger_elversberg,Elversberg,Elversberg,Elversberg,
 ger_erzgebirge_aue,Erzgebirge Aue,Erzgebirge Aue,,
-eng_everton,Everton,Everton,,Everton
-ger_fc_koln,FC Koln,FC Koln,,FC Cologne
+eng_everton,Everton,Everton,Everton,Everton
+ger_fc_koln,FC Koln,FC Koln,1. FC Köln,FC Cologne
 ger_fortuna_dusseldorf,Fortuna Dusseldorf,Fortuna Dusseldorf,,Fortuna Duesseldorf
 ger_frankfurt_fsv,Frankfurt FSV,Frankfurt FSV,,
-ger_freiburg,Freiburg,Freiburg,,Freiburg
-eng_fulham,Fulham,Fulham,,Fulham
+ger_freiburg,Freiburg,Freiburg,SC Freiburg,Freiburg
+eng_fulham,Fulham,Fulham,Fulham,Fulham
 ger_greuther_furth,Greuther Furth,Greuther Furth,,Greuther Fuerth
-ger_hamburg,Hamburg,Hamburg,,Hamburger SV
+ger_hamburg,Hamburg,Hamburg,Hamburger SV,Hamburger SV
 ger_hannover,Hannover,Hannover,,Hannover 96
 ger_hansa_rostock,Hansa Rostock,Hansa Rostock,,
 ger_heidenheim,Heidenheim,Heidenheim,,FC Heidenheim
 ger_hertha,Hertha,Hertha,,Hertha Berlin
-ger_hoffenheim,Hoffenheim,Hoffenheim,,Hoffenheim
+ger_hoffenheim,Hoffenheim,Hoffenheim,TSG Hoffenheim,Hoffenheim
 ger_holstein_kiel,Holstein Kiel,Holstein Kiel,,Holstein Kiel
 eng_huddersfield,Huddersfield,Huddersfield,,Huddersfield
-eng_hull,Hull,Hull,,Hull
+eng_hull,Hull,Hull,Hull City,Hull
 ger_ingolstadt,Ingolstadt,Ingolstadt,,Ingolstadt
-eng_ipswich,Ipswich,Ipswich,,Ipswich
+eng_ipswich,Ipswich,Ipswich,Ipswich Town,Ipswich
 ger_kaiserslautern,Kaiserslautern,Kaiserslautern,,
 ger_karlsruhe,Karlsruhe,Karlsruhe,,
-eng_leeds,Leeds,Leeds,,Leeds
+eng_leeds,Leeds,Leeds,Leeds United,Leeds
 eng_leicester,Leicester,Leicester,,Leicester
-ger_leverkusen,Leverkusen,Leverkusen,,Bayer Leverkusen
+ger_leverkusen,Leverkusen,Leverkusen,Bayer Leverkusen,Bayer Leverkusen
 eng_lincoln,Lincoln,Lincoln,,
-eng_liverpool,Liverpool,Liverpool,,Liverpool
+eng_liverpool,Liverpool,Liverpool,Liverpool,Liverpool
 eng_luton,Luton,Luton,,Luton
-ger_m_gladbach,M'gladbach,M'gladbach,,Borussia M.Gladbach
+ger_m_gladbach,M'gladbach,M'gladbach,Borussia Monchengladbach,Borussia M.Gladbach
 ger_magdeburg,Magdeburg,Magdeburg,,
-ger_mainz,Mainz,Mainz,,Mainz 05
-eng_man_city,Man City,Man City,,Manchester City
-eng_man_united,Man United,Man United,,Manchester United
+ger_mainz,Mainz,Mainz,FSV Mainz 05,Mainz 05
+eng_man_city,Man City,Man City,Manchester City,Manchester City
+eng_man_united,Man United,Man United,Manchester United,Manchester United
 eng_middlesbrough,Middlesbrough,Middlesbrough,,Middlesbrough
 eng_millwall,Millwall,Millwall,,
 eng_milton_keynes_dons,Milton Keynes Dons,Milton Keynes Dons,,
 ger_munich_1860,Munich 1860,Munich 1860,,
-eng_newcastle,Newcastle,Newcastle,,Newcastle United
+eng_newcastle,Newcastle,Newcastle,Newcastle United,Newcastle United
 eng_norwich,Norwich,Norwich,,Norwich
-eng_nott_m_forest,Nott'm Forest,Nott'm Forest,,Nottingham Forest
+eng_nott_m_forest,Nott'm Forest,Nott'm Forest,Nottingham Forest,Nottingham Forest
 ger_nurnberg,Nurnberg,Nurnberg,,Nuernberg
 ger_osnabruck,Osnabruck,Osnabruck,,
 eng_oxford,Oxford,Oxford,,
-ger_paderborn,Paderborn,Paderborn,,Paderborn
+ger_paderborn,Paderborn,Paderborn,SC Paderborn,Paderborn
 eng_peterboro,Peterboro,Peterboro,,
 eng_plymouth,Plymouth,Plymouth,,
 eng_portsmouth,Portsmouth,Portsmouth,,
 eng_preston,Preston,Preston,,
 ger_preuen_munster,Preußen Münster,Preußen Münster,,
 eng_qpr,QPR,QPR,,
-ger_rb_leipzig,RB Leipzig,RB Leipzig,,RasenBallsport Leipzig
+ger_rb_leipzig,RB Leipzig,RB Leipzig,RB Leipzig,RasenBallsport Leipzig
 eng_reading,Reading,Reading,,
 ger_regensburg,Regensburg,Regensburg,,
 eng_rotherham,Rotherham,Rotherham,,
 ger_sandhausen,Sandhausen,Sandhausen,,
-ger_schalke_04,Schalke 04,Schalke 04,,Schalke 04
+ger_schalke_04,Schalke 04,Schalke 04,FC Schalke 04,Schalke 04
 eng_sheffield_united,Sheffield United,Sheffield United,,Sheffield United
 eng_sheffield_weds,Sheffield Weds,Sheffield Weds,,
 eng_southampton,Southampton,Southampton,,Southampton
 ger_st_pauli,St Pauli,St Pauli,,St. Pauli
 eng_stoke,Stoke,Stoke,,Stoke
-ger_stuttgart,Stuttgart,Stuttgart,,VfB Stuttgart
-eng_sunderland,Sunderland,Sunderland,,Sunderland
+ger_stuttgart,Stuttgart,Stuttgart,VfB Stuttgart,VfB Stuttgart
+eng_sunderland,Sunderland,Sunderland,Sunderland,Sunderland
 eng_swansea,Swansea,Swansea,,Swansea
-eng_tottenham,Tottenham,Tottenham,,Tottenham
+eng_tottenham,Tottenham,Tottenham,Tottenham Hotspur,Tottenham
 ger_ulm,Ulm,Ulm,,
-ger_union_berlin,Union Berlin,Union Berlin,,Union Berlin
+ger_union_berlin,Union Berlin,Union Berlin,Union Berlin,Union Berlin
 eng_watford,Watford,Watford,,Watford
 ger_wehen,Wehen,Wehen,,
-ger_werder_bremen,Werder Bremen,Werder Bremen,,Werder Bremen
+ger_werder_bremen,Werder Bremen,Werder Bremen,Werder Bremen,Werder Bremen
 eng_west_brom,West Brom,West Brom,,West Bromwich Albion
 eng_west_ham,West Ham,West Ham,,West Ham
 eng_wigan,Wigan,Wigan,,

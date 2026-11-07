@@ -9,6 +9,8 @@ from bagent.data.store import connect
 app = typer.Typer(help="bagent – todennäköisyysmalli ja vihjeraportti (ei aseta vetoja).")
 data_app = typer.Typer(help="Datan lataus ja tarkistus.")
 app.add_typer(data_app, name="data")
+odds_app = typer.Typer(help="The Odds API -kerroinsnapshotit.")
+app.add_typer(odds_app, name="odds")
 
 
 @data_app.command("build")
@@ -23,6 +25,8 @@ def data_build(download: bool = typer.Option(True, help="Lataa puuttuvat/vanhent
         typer.echo(f"Understat (Kaggle) xG: {uk.import_xg(con)}")
     else:
         typer.echo(f"Understat (Kaggle) xG ohitettu: {uk.RAW_PATH} puuttuu")
+    from bagent.data import odds_api
+    typer.echo(f"The Odds API -snapshotit: {odds_api.load_all(con)}")
 
 
 @data_app.command("check")
@@ -35,6 +39,26 @@ def data_check() -> None:
     typer.echo("\nPORTTI (kertoimet, tulokset, Elo): " + ("OK" if ok else "EI LÄPI"))
     for p in problems:
         typer.echo(f"  - {p}")
+
+
+@odds_app.command("snapshot")
+def odds_snapshot() -> None:
+    """Hakee kertoimet kaikista sarjoista, tallentaa raakana (snapshots/) ja kantaan."""
+    from bagent.data import odds_api
+    con = connect()
+    failed = False
+    for r in odds_api.snapshot(con):
+        typer.echo(r)
+        failed |= "error" in r
+    if failed:
+        raise typer.Exit(1)
+
+
+@odds_app.command("usage")
+def odds_usage() -> None:
+    """Krediittitilanne (ilmainen kutsu)."""
+    from bagent.data import odds_api
+    typer.echo(odds_api.usage())
 
 
 if __name__ == "__main__":

@@ -60,3 +60,14 @@ splits:
 margin_diagnostic:
   soft_books: [bet365, betandwin, william_hill]
   synthetic_margins: [0.03, 0.05, 0.07, 0.09, 0.11]
+
+# The Odds API (todennettu 2026-11-07, ks. docs/data_sources.md). Ilmaistaso: 500 krediittiä/kk.
+# Kulutus per sarjahaku = alueet × markkinat (eu × 2 = 2). Kaksi sarjaa = 4 krediittiä/snapshot.
+# Koko eu-alue tallennetaan: se maksaa saman kuin pelkät terävät + käyttäjän välittäjät, ja
+# vaiheen 4 konsensusstrategia (Kaunitz) tarvitsee useita välittäjiä.
+odds_api:
+  regions: [eu]
+  markets: [h2h, totals]
+  min_credits_reserve: 20
+  stale_minutes: 180          # markkinan last_update tätä vanhempi -> ei odds-tauluun (haamukerroin)
+  snapshot_dir: snapshots/odds_api   # versionhallinnassa: kontti on lyhytikäinen
