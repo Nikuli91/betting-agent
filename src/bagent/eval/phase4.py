@@ -30,6 +30,7 @@ from bagent.log.forecast_log import git_commit
 from bagent.markets.devig import devig_matrix
 from bagent.models import calibration as cal
 from bagent.models import decorrelated as dm
+from bagent.models import movement as mvm
 from bagent.models.dixon_coles import DCParams
 
 SHARP = ["pinnacle", "betfair_exchange"]
@@ -68,6 +69,7 @@ def build(con: duckdb.DuckDBPyConnection, seasons: list[int], allow_test: bool =
         ps, src_e = _devig_book(early, SHARP + [FALLBACK], market)
         pc, src_c = _devig_book(close, SHARP + [FALLBACK], market)
         pavg, _ = _devig_book(early, [FALLBACK], market)
+        pb365, _ = _devig_book(early, ["bet365"], market)
         proxy = c["proxy_books"][market]
         k = {"proxy": best_price(early, proxy, market), "avg": bt.book_matrix(early, "market_avg", market),
              "max": bt.book_matrix(early, "market_max", market)}
@@ -85,6 +87,12 @@ def build(con: duckdb.DuckDBPyConnection, seasons: list[int], allow_test: bool =
             for name, kk in k.items():
                 d[f"k{name}_{s}"] = kk.reindex(ids)[s].to_numpy()
             d[f"kcproxy_{s}"] = k_close_proxy.reindex(ids)[s].to_numpy()
+            d[f"pb365_{s}"] = pb365.reindex(ids)[f"p_{s}"].to_numpy()
+            d[f"pA_{s}"] = pa.loc[ids, f"p_{s}"].to_numpy()
+        km = _mat(d, "kmax", market)
+        q = 1 / km
+        for i, s in enumerate(sel):
+            d[f"pmaxn_{s}"] = q[:, i] / q.sum(axis=1)
         d["log_lh"] = np.log(pa.loc[ids, "lambda_h"].to_numpy())
         d["log_la"] = np.log(pa.loc[ids, "lambda_a"].to_numpy())
         out[market] = d
@@ -93,6 +101,19 @@ def build(con: duckdb.DuckDBPyConnection, seasons: list[int], allow_test: bool =
 
 def _mat(d: pd.DataFrame, prefix: str, market: str) -> np.ndarray:
     return d[[f"{prefix}_{s}" for s in MARKETS[market]]].to_numpy(float)
+
+
+MOVE_FEATURES = ("keskiarvo − terävä", "maksimi − terävä", "bet365 − terävä", "malli A − terävä")
+
+
+def movement_features(d: pd.DataFrame, market: str) -> np.ndarray:
+    """(n × K × J): log-erot terävään aikaiseen. Puuttuva (esim. maksimi tai bet365) -> 0 = ei signaalia."""
+    lps = np.log(_mat(d, "ps", market))
+    feats = []
+    for pref in ("pavg", "pmaxn", "pb365", "pA"):
+        x = np.log(np.clip(_mat(d, pref, market), 1e-12, 1)) - lps
+        feats.append(np.nan_to_num(x, nan=0.0))
+    return np.stack(feats, axis=-1)
 
 
 def strategies(train: dict, target: dict, c_dec: dict[str, float]) -> dict[str, dict[str, np.ndarray]]:
@@ -108,7 +129,10 @@ def strategies(train: dict, target: dict, c_dec: dict[str, float]) -> dict[str, 
         out.setdefault("markkina + kalibrointi", {})[market] = vs.apply(ps_ta)
         out.setdefault("Kaunitz (konsensus = keskiarvo)", {})[market] = _mat(ta, "pavg", market)
         out.setdefault(f"dekorreloitu malli", {})[market] = dec.predict(X_ta)
+        mv = mvm.fit(ps_tr, movement_features(tr, market), _mat(tr, "pc", market), MOVE_FEATURES)
+        out.setdefault("kerroinliikemalli", {})[market] = mv.predict(ps_ta, movement_features(ta, market))
         out.setdefault("_calibration", {})[market] = vs
+        out.setdefault("_movement", {})[market] = mv
     return out
 
 
@@ -174,10 +198,30 @@ def calibration_check(target: dict, strat: dict) -> pd.DataFrame:
     for market in MARKETS:
         y = target[market]["y"].to_numpy(int)
         for name in ("markkina (terävä aikainen)", "markkina + kalibrointi", "Kaunitz (konsensus = keskiarvo)",
-                     "dekorreloitu malli"):
+                     "dekorreloitu malli", "kerroinliikemalli"):
             m = mt.all_metrics(strat[name][market], y, ordered=market == "1x2")
             rows.append({"markkina": market, "ennustaja": name, "n": m["n"], "log loss": m["log_loss"],
                          "Brier": m["brier"]})
+    return pd.DataFrame(rows)
+
+
+def movement_check(target: dict, strat: dict) -> pd.DataFrame:
+    """Ennustaako malli sulkeutumista paremmin kuin aikainen terävä? CE vs. katteeton sulkeutuminen."""
+    from bagent.models.pooling import cross_entropy
+    rows = []
+    for market in MARKETS:
+        d = target[market]
+        T, P0 = _mat(d, "pc", market), _mat(d, "ps", market)
+        P1 = strat["kerroinliikemalli"][market]
+        mv = strat["_movement"][market]
+        move, pred = (T - P0).ravel(), (P1 - P0).ravel()
+        rows.append({"markkina": market, "n": len(d), "CE aikainen terävä": cross_entropy(P0, T),
+                     "CE kerroinliikemalli": cross_entropy(P1, T),
+                     "parannus ×1000": 1000 * (cross_entropy(P0, T) - cross_entropy(P1, T)),
+                     "corr(ennustettu, toteutunut liike)": float(np.corrcoef(pred, move)[0, 1]),
+                     "liikkeen keskihajonta pp": 100 * float(move.std()),
+                     **{f"β {n}": float(v) for n, v in zip(mv.names, mv.beta)},
+                     "ajautuma b": tuple(round(float(x), 4) for x in mv.b)})
     return pd.DataFrame(rows)
 
 
@@ -286,6 +330,12 @@ Ennustetarkkuus kohdejaksolla (pienempi on parempi):
 
 Piirteet: mallin A (maalit, ξ = {c['model_a']['xi']}, τ_early = {c['model_a']['tau_early']}) log λ_koti ja log λ_vieras. c = {c_best}.
 {c_text}
+
+## 5. Kerroinliikemalli
+
+log p̂_sulkeutuva = log p_terävä_aikainen + b + Σ β_j · x_j (piirteet log-eroina terävään aikaiseen), opetettu {'opetuskausilla' if not test else 'kausilla 2020–2023'} katteetonta terävää sulkeutumista vastaan. Strategia: EV = p̂_sulkeutuva · k − 1.
+
+{movement_check(target, strat).T.to_markdown(floatfmt=".4f")}
 
 Poolipaino w = 0 vaiheessa 3, joten pooli (malli A + markkina) on sama kuin markkina eikä sitä raportoida erikseen.
 """, encoding="utf-8")

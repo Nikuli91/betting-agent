@@ -96,3 +96,21 @@ def test_phase4_test_run_lock(tmp_path, monkeypatch):
     monkeypatch.setattr(phase4, "git_commit", lambda: "abc")
     with pytest.raises(RuntimeError, match="jo tehty"):
         phase4.run(None, out_dir=tmp_path, test=True)
+
+
+def test_movement_model_recovers_signal():
+    from bagent.models import movement as mvm
+    rng = np.random.default_rng(5)
+    n = 6000
+    p0 = rng.dirichlet([5, 3, 4], n)
+    X = rng.normal(0, 0.1, (n, 3, 2))
+    beta, b = np.array([0.5, 0.0]), np.array([0.0, 0.03, 0.0])
+    z = np.log(p0) + b + X @ beta
+    pc = np.exp(z) / np.exp(z).sum(1, keepdims=True)
+    m = mvm.fit(p0, X, pc, ("a", "b"))
+    assert m.beta == pytest.approx(beta, abs=0.02)
+    assert m.b == pytest.approx(b, abs=0.01)
+    th = np.r_[0.2, -0.1, 0.05, 0.02]
+    f = lambda t: mvm.loss_grad(t, np.log(p0[:200]), X[:200], pc[:200], 1e-4)[0]  # noqa: E731
+    g = lambda t: mvm.loss_grad(t, np.log(p0[:200]), X[:200], pc[:200], 1e-4)[1]  # noqa: E731
+    assert check_grad(f, g, th) < 1e-6
