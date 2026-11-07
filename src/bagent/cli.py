@@ -61,5 +61,27 @@ def odds_usage() -> None:
     typer.echo(odds_api.usage())
 
 
+eval_app = typer.Typer(help="Vaiheiden raportit (testikaudet lukittuja).")
+app.add_typer(eval_app, name="eval")
+
+
+@eval_app.command("phase2")
+def eval_phase2() -> None:
+    """Markkina ja perustasot."""
+    from bagent.eval import phase2
+    typer.echo(phase2.run(connect()))
+
+
+@eval_app.command("phase3")
+def eval_phase3(n_boot: int = 500, workers: int = 4) -> None:
+    """Malli A (Dixon–Coles): viritys, walk-forward ja poolipaino w."""
+    from bagent.data.store import DB_PATH
+    import duckdb
+    from bagent.eval import phase3
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    con.execute("SET TimeZone='UTC'")
+    typer.echo(phase3.run(con, n_boot=n_boot, workers=workers))
+
+
 if __name__ == "__main__":
     app()
