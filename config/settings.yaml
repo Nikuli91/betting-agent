@@ -1,13 +1,50 @@
 leagues:
+  # pool = Elo-pooli (maa); tier = sarjataso (1 = pääsarja). feeder = alempi sarja vain Elon laskentaan.
+  # Championship on oma sarjansa ja samalla Valioliigan nousijoiden Elo-lähde (sama ENG-pooli).
   EPL:
     football_data: E0
-    feeder: E1            # nousijoiden Elo lasketaan alemmalta sarjatasolta
+    pool: ENG
+    tier: 1
     odds_api: soccer_epl
+  CHAMPIONSHIP:
+    football_data: E1
+    pool: ENG
+    tier: 2
+    odds_api: soccer_efl_champ
   BUNDESLIGA:
     football_data: D1
     feeder: D2
+    pool: GER
+    tier: 1
     odds_api: soccer_germany_bundesliga
+  LALIGA:
+    football_data: SP1
+    feeder: SP2
+    pool: ESP
+    tier: 1
+    odds_api: soccer_spain_la_liga
+  SERIEA:
+    football_data: I1
+    feeder: I2
+    pool: ITA
+    tier: 1
+    odds_api: soccer_italy_serie_a
+  LIGUE1:
+    football_data: F1
+    feeder: F2
+    pool: FRA
+    tier: 1
+    odds_api: soccer_france_ligue_one
+  EREDIVISIE:
+    football_data: N1     # football-datassa ei ole Alankomaiden toista sarjatasoa
+    pool: NED
+    tier: 1
+    odds_api: soccer_netherlands_eredivisie
 seasons_history: 6
+# Vaiheiden 2–4 raportit ja testiajo tehtiin näillä sarjoilla; ne toistetaan samoilla.
+original_leagues: [EPL, BUNDESLIGA]
+# Laajennus 2026-11-07: jäädytettyjen vaiheen 4 strategioiden kertaluonteinen testi näillä.
+new_leagues: [CHAMPIONSHIP, LALIGA, SERIEA, LIGUE1, EREDIVISIE]
 first_history_season: 2020   # 2020/21
 current_season: 2026         # 2026/27
 elo_warmup_first_season: 2015
@@ -88,6 +125,7 @@ phase4:
 paper:
   window_hours: 30           # lukitaan ottelut, jotka alkavat seuraavan 30 h aikana (päivittäinen ajo -> kerran)
   min_minutes_before_kickoff: 5
+  max_snapshot_age_hours: 3   # vanhempi snapshot ei kelpaa lukitukseen (esim. haku epäonnistui)
   sharp_live: [pinnacle, betfair_ex_eu]
   movement_train_seasons: [2020, 2021, 2022, 2023, 2024, 2025]
   log_path: paper/forecast_log.jsonl

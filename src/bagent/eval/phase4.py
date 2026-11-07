@@ -56,9 +56,11 @@ def best_price(odds: pd.DataFrame, books: list[str], market: str) -> pd.DataFram
         .reindex(columns=MARKETS[market])
 
 
-def build(con: duckdb.DuckDBPyConnection, seasons: list[int], allow_test: bool = False) -> dict[str, pd.DataFrame]:
+def build(con: duckdb.DuckDBPyConnection, seasons: list[int], allow_test: bool = False,
+          leagues: list[str] | None = None) -> dict[str, pd.DataFrame]:
     """Taulu per markkina: indeksi match_id; sarakkeina todennäköisyydet, kertoimet ja tulos."""
-    frame = bt.load_frame(con, seasons, allow_test=allow_test)
+    frame = bt.load_frame(con, seasons, allow_test=allow_test,
+                          leagues=leagues or settings()["original_leagues"])
     c = cfg()
     dc = DCParams(xi=c["model_a"]["xi"], tau_early=c["model_a"]["tau_early"])
     pa = ma.walk_forward(ma.load_history(con), frame, dc)
@@ -79,6 +81,7 @@ def build(con: duckdb.DuckDBPyConnection, seasons: list[int], allow_test: bool =
         f = frame.set_index("match_id").loc[ids]
         d = pd.DataFrame(index=ids)
         d["season"], d["split"], d["round"], d["y"] = f["season"], f["split"], f["round"], f[f"y_{market}"]
+        d["league"] = f["league"]
         d["close_book"], d["early_book"] = src_c.loc[ids].to_numpy(), src_e.loc[ids].to_numpy()
         for s in sel:
             d[f"ps_{s}"] = ps.loc[ids, f"p_{s}"]
@@ -251,11 +254,28 @@ def _fmt(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _test_already_run() -> bool:
-    return TEST_LOG.exists() and "| phase4 |" in TEST_LOG.read_text(encoding="utf-8")
+def _test_already_run(kind: str = "phase4") -> bool:
+    return TEST_LOG.exists() and f"| {kind} |" in TEST_LOG.read_text(encoding="utf-8")
 
 
-def run(con: duckdb.DuckDBPyConnection, out_dir: Path | None = None, test: bool = False) -> Path:
+def by_league(target: dict, strat: dict, th_main: dict) -> pd.DataFrame:
+    rows = []
+    for name in ("markkina (terävä aikainen)", "Kaunitz (konsensus = keskiarvo)", "kerroinliikemalli"):
+        for market in MARKETS:
+            d = target[market]
+            for lg, idx in d.groupby("league").indices.items():
+                for th in (0.0, th_main[market]):
+                    r = bet_table(d.iloc[idx], market, strat[name][market][idx], "proxy", th)
+                    rows.append({"strategia": name, "markkina": market, "sarja": lg, "kynnys": th,
+                                 **{k: r.get(k) for k in ("vetoja", "CLV ka.", "CLV 95 % LV")}})
+    return pd.DataFrame(rows)
+
+
+def run(con: duckdb.DuckDBPyConnection, out_dir: Path | None = None, test: bool = False,
+        new_leagues: bool = False) -> Path:
+    """new_leagues=True: jäädytetyt strategiat (opetus EPL+BL 2020–2023) uusien sarjojen kausille 2020–2025."""
+    kind = "phase4_new_leagues" if new_leagues else "phase4"
+    test = test or new_leagues
     out_dir = out_dir or ROOT / "reports"
     out_dir.mkdir(parents=True, exist_ok=True)
     s = settings()["splits"]
@@ -265,8 +285,8 @@ def run(con: duckdb.DuckDBPyConnection, out_dir: Path | None = None, test: bool 
     if test:
         if commit.endswith("-dirty"):
             raise RuntimeError("Testiajo vaatii puhtaan commitin (jäädytetyt asetukset)")
-        if _test_already_run():
-            raise RuntimeError(f"Vaiheen 4 testiajo on jo tehty (ks. {TEST_LOG}); PLAN 7 sallii yhden ajon")
+        if _test_already_run(kind):
+            raise RuntimeError(f"Vaiheen 4 testiajo ({kind}) on jo tehty (ks. {TEST_LOG}); PLAN 7 sallii yhden ajon")
     th_main = {"1x2": settings()["core"]["ev_threshold"]["h2h"], "ou25": settings()["core"]["ev_threshold"]["totals"]}
     thresholds = {m: sorted({0.0, 0.02, th_main[m]}) for m in MARKETS}
 
@@ -279,9 +299,15 @@ def run(con: duckdb.DuckDBPyConnection, out_dir: Path | None = None, test: bool 
     else:
         c_best = c["decorrelation_c"]
         c_tab = None
-        target = build(con, s["test"], allow_test=True)
+        if new_leagues:
+            nl = settings()["new_leagues"]
+            seasons = s["train"] + s["validation"] + s["test"]
+            target = build(con, seasons, allow_test=True, leagues=nl)
+            label = f"UUDET SARJAT {nl}, kaudet {seasons[0]}–{seasons[-1]} (yksi ajo)"
+        else:
+            target = build(con, s["test"], allow_test=True)
+            label = f"TESTI {s['test']} (yksi ajo)"
         strat = strategies(dev, target, c_best)
-        label = f"TESTI {s['test']} (yksi ajo)"
     res = evaluate(target, strat, thresholds)
     main = res[res.apply(lambda r: r["kynnys"] == th_main[r["markkina"]], axis=1)]
     vs = strat["_calibration"]
@@ -293,7 +319,8 @@ def run(con: duckdb.DuckDBPyConnection, out_dir: Path | None = None, test: bool 
     c_text = "" if c_tab is None else (
         f"c valittu validoinnissa: suurin keskimääräinen CLV (EV ≥ 0, proxy-kerroin) niistä, joilla vähintään "
         f"{c['decorrelation_min_bets']} vetoa:\n\n" + _fmt(c_tab).to_markdown(index=False))
-    name = f"phase4_{'test' if test else 'dev'}_{tag}"
+    name = f"{kind}_{'test' if test else 'dev'}_{tag}"
+    league_tab = by_league(target, strat, th_main)
     path = out_dir / f"{name}.md"
     path.write_text(f"""# Vaihe 4 – strategiat ja CLV ({label})
 
@@ -337,6 +364,10 @@ log p̂_sulkeutuva = log p_terävä_aikainen + b + Σ β_j · x_j (piirteet log-
 
 {movement_check(target, strat).T.to_markdown(floatfmt=".4f")}
 
+## 6. Sarjoittain (proxy-kerroin)
+
+{_fmt(league_tab).to_markdown(index=False)}
+
 Poolipaino w = 0 vaiheessa 3, joten pooli (malli A + markkina) on sama kuin markkina eikä sitä raportoida erikseen.
 """, encoding="utf-8")
     res.to_csv(out_dir / f"{name}.csv", index=False)
@@ -346,5 +377,5 @@ Poolipaino w = 0 vaiheessa 3, joten pooli (malli A + markkina) on sama kuin mark
             TEST_LOG.write_text("# Testijakson ajot (PLAN 7: yksi ajo per vaihe)\n\n| vaihe | aika (UTC) | commit | raportti |\n|---|---|---|---|\n",
                                 encoding="utf-8")
         with open(TEST_LOG, "a", encoding="utf-8") as f:
-            f.write(f"| phase4 | {datetime.now(timezone.utc):%Y-%m-%d %H:%M} | `{commit}` | reports/{path.name} |\n")
+            f.write(f"| {kind} | {datetime.now(timezone.utc):%Y-%m-%d %H:%M} | `{commit}` | reports/{path.name} |\n")
     return path

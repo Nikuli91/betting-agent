@@ -118,6 +118,28 @@ Lähtöparametrit ovat K = 20, kotietu 60, uusi pääsarjajoukkue 1500, uusi sy�
 - **Ajastus:** GitHub Actions (`.github/workflows/odds_snapshot.yml`) ajaa snapshotin kerran päivässä klo 07.17 UTC (Suomessa 9.17 talvella, 10.17 kesällä) ja commitoi raakatiedostot `main`-haaraan. Avain on repon salaisuutena `ODDS_API_KEY`. Kulutus on noin 120 krediittiä kuukaudessa, eikä Claude-käyttöä kulu.
 - `match_id` muodostetaan samalla kaavalla kuin football-datassa (sarja, UTC-päivä, koti, vieras). Liitos football-datan otteluun tarkistetaan, kun ensimmäiset snapshotatut ottelut ilmestyvät football-datan CSV:hen.
 
+
+## Laajennus 2026-11-07: viisi uutta sarjaa
+
+**Sarjat:** Championship (`E1`), La Liga (`SP1`), Serie A (`I1`), Ligue 1 (`F1`) ja Eredivisie (`N1`).
+
+**Elo-syöttösarjat:** `SP2`, `I2` ja `F2`. Alankomaiden toista sarjatasoa ei ole football-datassa.
+
+**Elo-poolit maittain:** ENG = E0 + E1, GER = D1 + D2, ESP, ITA, FRA ja NED. Championship on oma sarjansa ja samalla Valioliigan nousijoiden Elo-lähde. Valioliigan ja Bundesliigan Elo-luvut ja vaiheen 4 tulokset ovat siksi täsmälleen ennallaan, mikä on tarkistettu ajamalla kehitysraportti uudelleen ja vertaamalla.
+
+**Sarakkeet (todennettu 2024/25 ja 2026/27):** samat kuin Valioliigassa (`PS*`, `BFE*`, `B365*`, `BW*`, `WH*`, `Max*`, `Avg*`, `P>2.5`, `BFEC>2.5`). Kausilla 2026/27 Pinnacle puuttuu kaikista sarjoista, William Hill puuttuu ja `HxG/AxG` on mukana.
+
+**Kattavuus 2020/21–2025/26:**
+- Tulokset, aikaiset ja sulkeutuvat kertoimet sekä vertailukerroin ovat täydellisiä. Poikkeuksena Serie A:sta puuttuu aikainen kerroin 1–2 ottelusta.
+- Elo puuttuu 1–2 ottelusta kaudessa Championshipissä ja Eredivisiessä. Kyse on joukkueen ensimmäisestä ottelusta, kun se nousee sarjasta, jota ei ole datassa (League One, Eerste Divisie). Malli A käyttää niille Elo-priorin alkulukua.
+
+**The Odds API:**
+- Avaimet: `soccer_efl_champ`, `soccer_spain_la_liga`, `soccer_italy_serie_a`, `soccer_france_ligue_one`, `soccer_netherlands_eredivisie`.
+- Joukkuenimet todennettiin snapshotista ja osallistujarajapinnasta `GET /v4/sports/{sport}/participants`. Se palauttaa listan `{full_name, ...}` ja maksaa 1 krediitin. Se kattaa myös ottelut, joita snapshotissa ei ollut.
+- Kulutus 7 sarjalla on 14 krediittiä per ajo eli noin 420 kuukaudessa.
+
+**Tuntematon joukkuenimi** (esim. uusi nousija) ohittaa vain oman ottelunsa. Raakadata säilyy, ja GitHub-ajo merkitään epäonnistuneeksi, jotta nimi lisätään.
+
 ## Joukkuenimet
 
-`src/bagent/data/team_registry.csv`: 108 joukkuetta. Kanoninen id on `eng_`/`ger_` + football-datan nimen slug. Testit tarkistavat, että jokainen ladatuissa tiedostoissa esiintyvä nimi mappautuu ja että kannan jokaisella ottelulla on pari. `odds_api`-sarake on täytetty kauden 2026/27 pääsarjajoukkueille (38 kpl, todennettu snapshotista 2026-11-07). Testi tarkistaa, että jokaisella nykykauden joukkueella on nimi.
+`src/bagent/data/team_registry.csv`: 326 joukkuetta. Kanoninen id on maaetuliite (`eng_`, `ger_`, `esp_`, `ita_`, `fra_`, `ned_`) + football-datan nimen slug. Testit tarkistavat, että jokainen ladatuissa tiedostoissa esiintyvä nimi mappautuu ja että kannan jokaisella ottelulla on pari. `odds_api`-sarake on täytetty kauden 2026/27 pääsarjajoukkueille (38 kpl, todennettu snapshotista 2026-11-07). Testi tarkistaa, että jokaisella nykykauden joukkueella on nimi.

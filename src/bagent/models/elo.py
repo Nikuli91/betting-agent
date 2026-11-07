@@ -34,17 +34,30 @@ def _gd_mult(gd: int) -> float:
     return (11 + gd) / 8.0
 
 
+def _safe(fn, label, default):
+    """Asetuksissa olematon tunnus (esim. testidata) -> oletus."""
+    try:
+        return fn(label)
+    except KeyError:
+        return default
+
+
 def compute_pre_match(matches: pd.DataFrame, results: pd.DataFrame,
                       params: EloParams = EloParams()) -> pd.DataFrame:
     """Palauttaa match_id, home_elo, away_elo, home_games, away_games, available_at.
 
     matches: match_id, league, division, season, kickoff_utc, home_id, away_id
     results: match_id, home_goals, away_goals, available_at
-    Pooli = league-tunnuksen maaosa (EPL ja EPL_FEEDER -> EPL).
+    Pooli = asetusten pool (maa): esim. EPL ja CHAMPIONSHIP -> ENG, BUNDESLIGA ja BUNDESLIGA_FEEDER -> GER.
+    Joukkue, joka nähdään ensimmäisen kerran alemmalla sarjatasolla, saa init_feeder-luvun.
     """
     m = matches.copy()
-    m["pool"] = m["league"].str.replace("_FEEDER", "", regex=False)
-    m["is_feeder"] = m["league"].str.endswith("_FEEDER")
+    from bagent.config import league_pool, league_tier
+    labels = m["league"].unique()
+    pools = {lb: _safe(league_pool, lb, lb.removesuffix("_FEEDER")) for lb in labels}
+    tiers = {lb: _safe(league_tier, lb, 2 if lb.endswith("_FEEDER") else 1) for lb in labels}
+    m["pool"] = m["league"].map(pools)
+    m["is_feeder"] = m["league"].map(tiers) > 1
     m = m.merge(results[["match_id", "home_goals", "away_goals", "available_at"]],
                 on="match_id", how="left")
     out = []

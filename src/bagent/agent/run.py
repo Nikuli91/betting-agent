@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 
 from bagent.betting import edge, staking
-from bagent.config import ROOT, settings
+from bagent.config import ROOT, main_leagues, settings
 from bagent.data.store import connect
 from bagent.eval import model_a as ma
 from bagent.eval import phase4 as p4
@@ -93,7 +93,7 @@ def match_inputs(g: pd.DataFrame, market: str, pa: np.ndarray) -> dict[str, Any]
 
 def movement_models(con: duckdb.DuckDBPyConnection) -> dict[str, mvm.MovementModel]:
     """Kerroinliikemalli opetettuna kaikilla historiakausilla (testijakso on jo käytetty, PLAN 7)."""
-    d = p4.build(con, settings()["paper"]["movement_train_seasons"], allow_test=True)
+    d = p4.build(con, settings()["paper"]["movement_train_seasons"], allow_test=True, leagues=main_leagues())
     return {m: mvm.fit(p4._mat(d[m], "ps", m), p4.movement_features(d[m], m), p4._mat(d[m], "pc", m),
                        p4.MOVE_FEATURES) for m in SEL}
 
@@ -121,6 +121,8 @@ def run(con: duckdb.DuckDBPyConnection | None = None, now: datetime | None = Non
     log = fl.load_jsonl(duckdb.connect(":memory:"), ROOT / pc["log_path"])
     logged = {r["match_id"] for r in log.rows()}
     snap = latest_snapshot(con, now)
+    max_age = timedelta(hours=pc["max_snapshot_age_hours"])
+    snap = snap[pd.to_datetime(snap["fetched_at"], utc=True) >= now - max_age]  # ei vanhoilla kertoimilla
     lo = now + timedelta(minutes=pc["min_minutes_before_kickoff"])
     hi = now + timedelta(hours=pc["window_hours"])
     snap = snap[(snap["commence_time"] > lo) & (snap["commence_time"] <= hi) & ~snap["match_id"].isin(logged)]

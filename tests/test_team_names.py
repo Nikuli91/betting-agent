@@ -16,7 +16,7 @@ def test_unknown_team_raises():
 def test_registry_ids_unique_and_prefixed():
     ids = tn.all_team_ids()
     assert len(ids) > 40
-    assert all(i.startswith(("eng_", "ger_")) for i in ids)
+    assert all(i.startswith(("eng_", "ger_", "esp_", "ita_", "fra_", "ned_")) for i in ids)
 
 
 def test_every_downloaded_team_name_maps():

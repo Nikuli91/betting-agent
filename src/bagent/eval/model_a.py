@@ -12,6 +12,7 @@ import duckdb
 import numpy as np
 import pandas as pd
 
+from bagent.config import league_pool, leagues_sql
 from bagent.models import dixon_coles as dc
 from bagent.models import scoreline as sl
 
@@ -24,11 +25,11 @@ class History:
 
 
 def load_history(con: duckdb.DuckDBPyConnection, xg_sources: tuple[str, ...] = ("understat_kaggle", "football_data")) -> History:
-    res = con.execute("""
+    res = con.execute(f"""
         SELECT m.match_id, m.league, m.season, m.kickoff_utc, m.home_id, m.away_id,
                r.home_goals, r.away_goals, r.available_at
         FROM matches m JOIN results r USING (match_id)
-        WHERE m.league IN ('EPL','BUNDESLIGA')""").df()
+        WHERE m.league IN ({leagues_sql()})""").df()
     src = ", ".join(f"'{s}'" for s in xg_sources)
     order = " ".join(f"WHEN '{s}' THEN {i}" for i, s in enumerate(xg_sources))
     xg = con.execute(f"""
@@ -36,11 +37,13 @@ def load_history(con: duckdb.DuckDBPyConnection, xg_sources: tuple[str, ...] = (
           SELECT *, row_number() OVER (PARTITION BY match_id ORDER BY CASE source {order} END) rn
           FROM xg WHERE source IN ({src})) WHERE rn = 1""").df()
     elo = con.execute("""
-        SELECT replace(m.league, '_FEEDER', '') AS league, m.kickoff_utc, m.home_id AS team_id,
+        SELECT m.league, m.kickoff_utc, m.home_id AS team_id,
                e.home_elo AS elo, e.available_at FROM elo_pre e JOIN matches m USING (match_id)
         UNION ALL
-        SELECT replace(m.league, '_FEEDER', ''), m.kickoff_utc, m.away_id, e.away_elo, e.available_at
+        SELECT m.league, m.kickoff_utc, m.away_id, e.away_elo, e.available_at
         FROM elo_pre e JOIN matches m USING (match_id)""").df()
+    pools = {lb: league_pool(lb) for lb in elo["league"].unique()}
+    elo["league"] = elo["league"].map(pools)  # Elo-pooli (maa): nousijan luku tulee alemmasta sarjasta
     return History(res, xg, elo)
 
 
@@ -57,7 +60,7 @@ def training_set(h: History, league: str, t_fit: pd.Timestamp, params: dc.DCPara
 
 def elo_at(h: History, league: str, t_fit: pd.Timestamp) -> dict[str, float]:
     """Joukkueen viimeisin Elo-luku, jonka available_at < t_fit (pooli sisältää syöttösarjan)."""
-    e = h.elo[(h.elo["league"] == league) & (h.elo["available_at"] < t_fit)]
+    e = h.elo[(h.elo["league"] == league_pool(league)) & (h.elo["available_at"] < t_fit)]
     e = e.sort_values("kickoff_utc").groupby("team_id").tail(1)
     return dict(zip(e["team_id"], e["elo"]))
 

@@ -199,10 +199,11 @@ def all_files() -> list[tuple[str, FDFile]]:
     vain Elon laskentaan.
     """
     cfg = settings()
+    main_divs = {lc["football_data"] for lc in cfg["leagues"].values()}
     out = []
     for league, lc in cfg["leagues"].items():
         for s in range(cfg["elo_warmup_first_season"], cfg["current_season"] + 1):
             out.append((league, FDFile(lc["football_data"], s)))
-            if lc.get("feeder"):
+            if lc.get("feeder") and lc["feeder"] not in main_divs:  # esim. E1 on oma sarjansa
                 out.append((f"{league}_FEEDER", FDFile(lc["feeder"], s)))
     return out

@@ -14,7 +14,7 @@ from pathlib import Path
 import duckdb
 import pandas as pd
 
-from bagent.config import RAW_DIR, settings
+from bagent.config import RAW_DIR, leagues_sql, settings
 from bagent.data.team_names import to_canonical
 
 RAW_PATH = RAW_DIR / "understat_kaggle" / "game_stats.csv"
@@ -41,10 +41,10 @@ def pair_matches(g: pd.DataFrame) -> pd.DataFrame:
 
 def import_xg(con: duckdb.DuckDBPyConnection, path: Path = RAW_PATH) -> dict[str, int]:
     pairs = pair_matches(pd.read_csv(path))
-    fx = con.execute("""SELECT m.match_id, m.league, m.home_id, m.away_id, m.kickoff_utc,
+    fx = con.execute(f"""SELECT m.match_id, m.league, m.home_id, m.away_id, m.kickoff_utc,
                                r.home_goals AS fd_hg, r.away_goals AS fd_ag
                         FROM matches m JOIN results r USING (match_id)
-                        WHERE m.league IN ('EPL','BUNDESLIGA')""").df()
+                        WHERE m.league IN ({leagues_sql()})""").df()
     fx["day"] = fx["kickoff_utc"].dt.tz_convert("Europe/London").dt.date
     j = pairs.merge(fx, on=["league", "home_id", "away_id"])
     j = j[(pd.to_datetime(j["day_x"]) - pd.to_datetime(j["day_y"])).abs() <= pd.Timedelta(days=1)]

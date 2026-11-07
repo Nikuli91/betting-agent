@@ -16,7 +16,7 @@ import duckdb
 import numpy as np
 import pandas as pd
 
-from bagent.config import settings
+from bagent.config import leagues_sql, settings
 from bagent.markets.devig import devig_matrix
 
 H2H = ["H", "D", "A"]
@@ -36,7 +36,9 @@ def split_of(season: int) -> str:
     return "other"
 
 
-def load_frame(con: duckdb.DuckDBPyConnection, seasons: list[int], *, allow_test: bool = False) -> pd.DataFrame:
+def load_frame(con: duckdb.DuckDBPyConnection, seasons: list[int], *, allow_test: bool = False,
+               leagues: list[str] | None = None) -> pd.DataFrame:
+    """leagues = None -> kaikki asetusten sarjat."""
     test = set(settings()["splits"]["test"])
     if not allow_test and test & set(seasons):
         raise TestPeriodLockedError(f"Testikaudet {sorted(test & set(seasons))} ovat lukittuja (PLAN 7)")
@@ -46,7 +48,7 @@ def load_frame(con: duckdb.DuckDBPyConnection, seasons: list[int], *, allow_test
         SELECT m.match_id, m.league, m.season, m.kickoff_utc, m.home_id, m.away_id,
                r.home_goals, r.away_goals, r.ftr
         FROM matches m JOIN results r USING (match_id)
-        WHERE m.league IN ('EPL', 'BUNDESLIGA') AND m.season IN ({seasons_sql})
+        WHERE m.league IN ({leagues_sql(leagues)}) AND m.season IN ({seasons_sql})
         ORDER BY m.kickoff_utc, m.match_id""").df()
     df["t"] = df["kickoff_utc"] - lock
     df["y_1x2"] = df["ftr"].map({"H": 0, "D": 1, "A": 2}).astype(int)
@@ -117,9 +119,9 @@ def _ns(s: pd.Series) -> np.ndarray:
 def base_rate(con: duckdb.DuckDBPyConnection, frame: pd.DataFrame, market: str,
               window_days: int = 3 * 365) -> pd.DataFrame:
     """Liigan keskiarvojakauma: lopputulosten osuudet ikkunassa, vain tulokset available_at < t."""
-    res = con.execute("""SELECT m.league, r.available_at, r.ftr, r.home_goals + r.away_goals AS goals
+    res = con.execute(f"""SELECT m.league, r.available_at, r.ftr, r.home_goals + r.away_goals AS goals
                          FROM results r JOIN matches m USING (match_id)
-                         WHERE m.league IN ('EPL','BUNDESLIGA')""").df()
+                         WHERE m.league IN ({leagues_sql()})""").df()
     sel = SELECTIONS[market]
     if market == "1x2":
         for i, s in enumerate(sel):

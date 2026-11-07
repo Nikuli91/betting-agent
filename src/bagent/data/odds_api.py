@@ -185,11 +185,9 @@ def parse_snapshot(rec: dict[str, Any]) -> dict[str, pd.DataFrame]:
                 odds += [dict(match_id=mid, source=SOURCE, bookmaker=r["bookmaker"], market=market,
                               phase="snapshot", selection=r["selection"], price=r["price"],
                               available_at=fetched, available_at_estimated=False) for r in keep]
-    if unknown:
-        raise UnknownTeamError(f"odds_api: tuntemattomat joukkueet {sorted(unknown)}; "
-                               "lisää team_registry.csv:n odds_api-sarakkeeseen")
+    # Tuntematon joukkue ohittaa vain oman ottelunsa; nimet palautetaan, jotta ajo voidaan merkitä virheeksi.
     return {"odds_api_events": pd.DataFrame(events), "odds_snapshots": pd.DataFrame(snaps),
-            "odds": pd.DataFrame(odds)}
+            "odds": pd.DataFrame(odds), "unknown": sorted(unknown)}
 
 
 def _known() -> set[str]:
@@ -226,7 +224,7 @@ def load_file(con: duckdb.DuckDBPyConnection, path: Path) -> dict[str, int]:
             con.execute(f"INSERT INTO odds_snapshots ({', '.join(sn.columns)}) SELECT * FROM _sn")
         finally:
             con.unregister("_sn")
-    return {"events": len(ev), "snapshot_rows": len(sn),
+    return {"events": len(ev), "snapshot_rows": len(sn), "unknown": parsed["unknown"],
             "odds_rows": upsert(con, "odds", parsed["odds"])}
 
 
@@ -237,11 +235,15 @@ def load_all(con: duckdb.DuckDBPyConnection) -> dict[str, int]:
     con.execute("DELETE FROM odds_api_events")
     con.execute("DELETE FROM odds WHERE source = ?", [SOURCE])
     tot = {"files": 0, "events": 0, "snapshot_rows": 0, "odds_rows": 0}
+    unknown: set[str] = set()
     for p in sorted(snapshot_dir().rglob("*.json.gz")):
         n = load_file(con, p)
         tot["files"] += 1
+        unknown.update(n.pop("unknown"))
         for k, v in n.items():
             tot[k] += v
+    if unknown:
+        tot["unknown_teams"] = sorted(unknown)
     tot["events"] = con.execute("SELECT count(*) FROM odds_api_events").fetchone()[0]
     return tot
 
@@ -262,9 +264,11 @@ def snapshot(con: duckdb.DuckDBPyConnection, leagues: list[str] | None = None) -
             path, u = fetch_league(lg, c)
             remaining = int(u["x-requests-remaining"] or 0)
             res = {"league": lg, "file": str(path.relative_to(ROOT)), **u}
-            try:
-                res.update(load_file(con, path))
-            except UnknownTeamError as e:  # raakadata on jo tallessa; kanta päivitetään mappauksen jälkeen
-                res["error"] = str(e)
+            n = load_file(con, path)  # raakadata on jo tallessa; ohitetut ottelut latautuvat mappauksen jälkeen
+            unknown = n.pop("unknown")
+            res.update(n)
+            if unknown:
+                res["error"] = (f"tuntemattomat joukkueet {unknown}; lisää team_registry.csv:n "
+                                "odds_api-sarakkeeseen (muut ottelut tallennettiin)")
             out.append(res)
     return out

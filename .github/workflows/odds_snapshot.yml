@@ -1,6 +1,6 @@
 # Päivittäinen kerroinsnapshot The Odds API:sta (PLAN 5 ja 9.1).
 # Raakavastaukset commitoidaan kansioon snapshots/odds_api/, koska kerroinliikettä ei voi kerätä jälkikäteen.
-# Kulutus: 4 krediittiä per ajo (2 sarjaa × eu × 2 markkinaa), noin 120 kuukaudessa (ilmaistaso 500).
+# Kulutus: 14 krediittiä per ajo (7 sarjaa × eu × 2 markkinaa), noin 420 kuukaudessa (ilmaistaso 500).
 # Avain luetaan repon salaisuudesta ODDS_API_KEY; sitä ei tulosteta.
 name: Kerroinsnapshot ja paperiajo
 
@@ -23,6 +23,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # Päättyneiden kausien CSV:t eivät muutu: välimuisti nopeuttaa ajoa (nykykausi ladataan aina uudelleen).
+      - uses: actions/cache@v4
+        with:
+          path: data/raw/football_data
+          key: fd-${{ github.run_id }}
+          restore-keys: fd-
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -44,7 +51,7 @@ jobs:
 
       - name: Paperiajo (lukitse vihjeet) ja CLV-arvio
         id: paper
-        if: steps.fetch.outputs.status == '0'
+        if: always()   # tuntematon joukkue ohittaa vain oman ottelunsa; vanhaa snapshotia ei käytetä
         env:
           OPENBLAS_NUM_THREADS: "1"
         run: |

@@ -40,3 +40,22 @@ def season_code(start_year: int) -> str:
 
 def season_label(start_year: int) -> str:
     return f"{start_year}/{(start_year + 1) % 100:02d}"
+
+
+def main_leagues() -> list[str]:
+    """Analysoitavat sarjat (ei Elo-syöttösarjoja)."""
+    return list(settings()["leagues"])
+
+
+def leagues_sql(leagues: list[str] | None = None) -> str:
+    return ", ".join(f"'{lg}'" for lg in (leagues or main_leagues()))
+
+
+def league_pool(label: str) -> str:
+    """Elo-pooli sarjatunnukselle; '<SARJA>_FEEDER' kuuluu sarjansa pooliin."""
+    return settings()["leagues"][label.removesuffix("_FEEDER")]["pool"]
+
+
+def league_tier(label: str) -> int:
+    lc = settings()["leagues"][label.removesuffix("_FEEDER")]
+    return lc["tier"] + (1 if label.endswith("_FEEDER") else 0)

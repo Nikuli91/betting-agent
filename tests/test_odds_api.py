@@ -47,11 +47,15 @@ def test_phantom_odds_filtered_from_odds_table():
     assert not started["odds_snapshots"].empty
 
 
-def test_unknown_team_raises():
+def test_unknown_team_skips_only_its_event():
     r = _rec()
+    good = json.loads(json.dumps(r["data"][0]))
+    good["id"], good["home_team"], good["away_team"] = "ev2", "Chelsea", "Arsenal"
     r["data"][0]["home_team"] = "Not A Real FC"
-    with pytest.raises(tn.UnknownTeamError):
-        oa.parse_snapshot(r)
+    r["data"].append(good)
+    p = oa.parse_snapshot(r)
+    assert p["unknown"] == ["Not A Real FC"]
+    assert list(p["odds_api_events"].event_id) == ["ev2"]
 
 
 def test_load_file_idempotent(mem_con, tmp_path):
@@ -75,9 +79,9 @@ def test_api_key_masked_in_errors(monkeypatch):
 
 def test_current_season_teams_have_odds_api_name(real_con):
     """Jokaisella nykykauden pääsarjajoukkueella on The Odds API -nimi (muuten snapshot ei liity)."""
-    from bagent.config import settings
+    from bagent.config import leagues_sql, settings
     cur = settings()["current_season"]
     ids = {r[0] for r in real_con.execute(
-        "SELECT home_id FROM matches WHERE season = ? AND league IN ('EPL','BUNDESLIGA')", [cur]).fetchall()}
+        f"SELECT home_id FROM matches WHERE season = ? AND league IN ({leagues_sql()})", [cur]).fetchall()}
     mapped = {tn.to_canonical("odds_api", n) for n in tn.known_names("odds_api")}
     assert ids and ids <= mapped, sorted(ids - mapped)

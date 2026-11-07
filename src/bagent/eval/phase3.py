@@ -24,7 +24,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from bagent.config import DB_PATH, ROOT, settings  # noqa: E402
+from bagent.config import DB_PATH, ROOT, leagues_sql, settings  # noqa: E402
 from bagent.eval import backtest as bt  # noqa: E402
 from bagent.eval import metrics as mt  # noqa: E402
 from bagent.eval import model_a as ma  # noqa: E402
@@ -56,7 +56,7 @@ def _grid_job(args):
     params, seasons = args
     con = _ro_con()
     h = ma.load_history(con)
-    frame = bt.load_frame(con, seasons)
+    frame = bt.load_frame(con, seasons, leagues=settings()["original_leagues"])
     p = ma.walk_forward(h, frame, params)
     return {**asdict(params), **_score(p, frame)}
 
@@ -78,7 +78,7 @@ def xg_coverage(con, seasons: list[int]) -> float:
     s = ", ".join(map(str, seasons))
     return con.execute(f"""SELECT avg((x.match_id IS NOT NULL)::INT) FROM matches m
         LEFT JOIN (SELECT DISTINCT match_id FROM xg) x USING (match_id)
-        WHERE m.league IN ('EPL','BUNDESLIGA') AND m.season IN ({s})""").fetchone()[0] or 0.0
+        WHERE m.league IN ({leagues_sql()}) AND m.season IN ({s})""").fetchone()[0] or 0.0
 
 
 def market(con, frame: pd.DataFrame, mkt: str, phase: str) -> pd.DataFrame:
@@ -164,8 +164,8 @@ def run(con: duckdb.DuckDBPyConnection, out_dir: Path | None = None, n_boot: int
     no_prior = replace(params, tau_early=0.0)
 
     h = ma.load_history(con)
-    tr = bt.load_frame(con, s["train"])
-    va = bt.load_frame(con, s["validation"])
+    tr = bt.load_frame(con, s["train"], leagues=settings()["original_leagues"])
+    va = bt.load_frame(con, s["validation"], leagues=settings()["original_leagues"])
     pa_tr = ma.walk_forward(h, tr, params)
     pa_va = ma.walk_forward(h, va, params)
     pa_va_np = ma.walk_forward(h, va, no_prior)

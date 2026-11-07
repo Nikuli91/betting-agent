@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt  # noqa: E402
 import numpy as np  # noqa: E402
 import pandas as pd  # noqa: E402
 
-from bagent.config import ROOT, settings  # noqa: E402
+from bagent.config import ROOT, leagues_sql, settings  # noqa: E402
 from bagent.eval import backtest as bt  # noqa: E402
 from bagent.eval import metrics as mt  # noqa: E402
 from bagent.log.forecast_log import git_commit  # noqa: E402
@@ -154,10 +154,10 @@ def margin_diagnostic(con: duckdb.DuckDBPyConnection, frame: pd.DataFrame) -> st
 
 def sharp_agreement(con: duckdb.DuckDBPyConnection) -> str:
     """Pinnacle vs Betfair Exchange sulkeutuva, päällekkäinen jakso. Vain kertoimet, ei tuloksia."""
-    df = con.execute("""
+    df = con.execute(f"""
         SELECT o.match_id, o.bookmaker, o.selection, o.price, o.available_at FROM odds o JOIN matches m USING (match_id)
         WHERE o.market='1x2' AND o.phase='closing' AND o.bookmaker IN ('pinnacle','betfair_exchange')
-          AND m.league IN ('EPL','BUNDESLIGA') AND m.season >= 2024""").df()
+          AND m.league IN ({leagues_sql()}) AND m.season >= 2024""").df()
     if df.empty:
         return "Ei päällekkäistä dataa."
     w = {b: bt.book_matrix(df, b, "1x2") for b in ("pinnacle", "betfair_exchange")}
@@ -177,7 +177,7 @@ def run(con: duckdb.DuckDBPyConnection, out_dir: Path | None = None) -> Path:
     out_dir = out_dir or ROOT / "reports"
     out_dir.mkdir(parents=True, exist_ok=True)
     s = settings()["splits"]
-    frame = bt.load_frame(con, s["train"] + s["validation"])
+    frame = bt.load_frame(con, s["train"] + s["validation"], leagues=settings()["original_leagues"])
     res, keep = evaluate(con, frame)
     commit = git_commit()
     tag = commit[:12]
