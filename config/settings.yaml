@@ -71,3 +71,13 @@ odds_api:
   min_credits_reserve: 20
   stale_minutes: 180          # markkinan last_update tätä vanhempi -> ei odds-tauluun (haamukerroin)
   snapshot_dir: snapshots/odds_api   # versionhallinnassa: kontti on lyhytikäinen
+
+# Vaihe 4 (PLAN 9.4). Testiajo käyttää näitä jäädytettyinä.
+phase4:
+  model_a: {xi: 0.0015, tau_early: 10.0}       # vaiheen 3 viritys (maalit)
+  proxy_books:                                  # lähimpänä käyttäjän välittäjien parhaan kertoimen katetta
+    1x2: [bet365, betandwin, william_hill]      # paras näistä: kate 3,7–4,5 % (käyttäjä ~3,0 %)
+    ou25: [bet365]                              # ainoa pehmeä välittäjä yli/alle-datassa: 5,0 % (käyttäjä ~4,3 %)
+  decorrelation_grid: [0.0, 0.5, 1.0, 2.0, 4.0]
+  decorrelation_min_bets: 50                   # c:n valinnassa vähintään näin monta vetoa (EV ≥ 0)
+  decorrelation_c: {1x2: 1.0, ou25: 1.0}        # valittu validoinnissa (vähintään 50 vetoa), jäädytetty testiä varten

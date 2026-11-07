@@ -83,5 +83,16 @@ def eval_phase3(n_boot: int = 500, workers: int = 1) -> None:
     typer.echo(phase3.run(con, n_boot=n_boot, workers=workers))
 
 
+@eval_app.command("phase4")
+def eval_phase4(test: bool = typer.Option(False, help="Aja testijakso KERRAN jäädytetyillä asetuksilla.")) -> None:
+    """Strategiat ja CLV. Oletuksena vain opetus+validointi."""
+    from bagent.data.store import DB_PATH
+    import duckdb
+    from bagent.eval import phase4
+    con = duckdb.connect(str(DB_PATH), read_only=True)
+    con.execute("SET TimeZone='UTC'")
+    typer.echo(phase4.run(con, test=test))
+
+
 if __name__ == "__main__":
     app()
