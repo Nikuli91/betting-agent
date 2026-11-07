@@ -94,5 +94,23 @@ def eval_phase4(test: bool = typer.Option(False, help="Aja testijakso KERRAN jä
     typer.echo(phase4.run(con, test=test))
 
 
+paper_app = typer.Typer(help="Paperikausi: lukitut vihjeet ja CLV (ei rahaa).")
+app.add_typer(paper_app, name="paper")
+
+
+@paper_app.command("run")
+def paper_run() -> None:
+    """Lukitsee seuraavan 30 h ottelut ennustelokiin ja kirjoittaa päiväraportin."""
+    from bagent.agent import run as agent
+    typer.echo(agent.run())
+
+
+@paper_app.command("evaluate")
+def paper_evaluate() -> None:
+    """Laskee lukittujen signaalien CLV:n sulkeutumiskertoimia vastaan (paper/reports/clv.md)."""
+    from bagent.eval import paper
+    typer.echo(paper.write(connect()))
+
+
 if __name__ == "__main__":
     app()

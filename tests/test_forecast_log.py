@@ -62,3 +62,28 @@ def test_correction_is_new_row(mem_con):
     assert len(rows) == 3 and rows[0]["forecast_id"] == fid
     assert rows[2]["supersedes"] == fid and rows[2]["forecast_id"] == new
     log.verify()
+
+
+def test_jsonl_roundtrip_and_tamper_detection(tmp_path):
+    import json as _json
+    from datetime import datetime, timedelta, timezone
+    from bagent.data.store import connect
+    from bagent.log import forecast_log as fl
+    now = datetime(2026, 11, 7, 9, tzinfo=timezone.utc)
+    p = tmp_path / "log.jsonl"
+    log = fl.ForecastLog(connect(":memory:"))
+    log.append(match_id="m1", kickoff_utc=now + timedelta(hours=5), model_version="v", payload={"p": [0.5, 0.3, 0.2]},
+               now=now, commit="c")
+    assert fl.export_jsonl(log, p) == 1
+    log.append(match_id="m2", kickoff_utc=now + timedelta(hours=6), model_version="v", payload={"p": [0.4]},
+               now=now, commit="c")
+    assert fl.export_jsonl(log, p) == 1  # vain uusi rivi lisätään
+    log2 = fl.load_jsonl(connect(":memory:"), p)
+    assert [r["match_id"] for r in log2.rows()] == ["m1", "m2"]
+    lines = p.read_text().splitlines()
+    r = _json.loads(lines[0])
+    r["payload"]["p"][0] = 0.9
+    lines[0] = _json.dumps(r)
+    p.write_text("\n".join(lines) + "\n")
+    with pytest.raises(fl.TamperedLogError):
+        fl.load_jsonl(connect(":memory:"), p)

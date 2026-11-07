@@ -141,3 +141,47 @@ class ForecastLog:
             if r["created_at"] >= r["kickoff_utc"]:
                 raise TamperedLogError(f"seq {r['seq']}: created_at aloituksen jälkeen")
             prev = r["content_hash"]
+
+
+# --- pysyvyys versionhallinnassa (JSONL) ---------------------------------------------------
+# Pilvikontti ja GitHub Actions ovat lyhytikäisiä, joten loki tallennetaan myös rivitiedostona.
+# Tiedostoon vain lisätään rivejä; lataus tarkistaa hash-ketjun, joten muokattu rivi havaitaan.
+_COLS = ("seq", "forecast_id", "created_at", "match_id", "kickoff_utc", "model_version", "git_commit",
+         "payload", "supersedes", "prev_hash", "content_hash")
+
+
+def export_jsonl(log: ForecastLog, path) -> int:
+    """Kirjoittaa tiedostoon ne rivit, joita siinä ei vielä ole (append-only)."""
+    from pathlib import Path
+    path = Path(path)
+    log.verify()
+    have = 0
+    if path.exists():
+        have = sum(1 for line in path.read_text(encoding="utf-8").splitlines() if line.strip())
+    rows = log.rows()[have:]
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with open(path, "a", encoding="utf-8") as f:
+        for r in rows:
+            rec = {c: (_ts(r[c]) if c in ("created_at", "kickoff_utc") else r[c]) for c in _COLS}
+            rec["payload"] = json.loads(r["payload"])
+            f.write(_canonical_json(rec) + "\n")
+    return len(rows)
+
+
+def load_jsonl(con: duckdb.DuckDBPyConnection, path) -> ForecastLog:
+    """Lataa lokin tiedostosta tyhjään tauluun ja tarkistaa ketjun."""
+    from pathlib import Path
+    log = ForecastLog(con)
+    con.execute("DELETE FROM forecast_log")
+    path = Path(path)
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if not line.strip():
+                continue
+            r = json.loads(line)
+            con.execute("INSERT INTO forecast_log VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                        [r["seq"], r["forecast_id"], datetime.fromisoformat(r["created_at"]), r["match_id"],
+                         datetime.fromisoformat(r["kickoff_utc"]), r["model_version"], r["git_commit"],
+                         _canonical_json(r["payload"]), r["supersedes"], r["prev_hash"], r["content_hash"]])
+    log.verify()
+    return log

@@ -29,7 +29,9 @@ big_wins:
 devig_method: power
 bookmakers:
   sharp: [pinnacle, betfair_ex_eu]
-  user: [coolbet, unibet_se, betsson, nordicbet, leovegas_se]   # The Odds API -avaimet; Veikkaus ei ole rajapinnassa
+  user: [coolbet, unibet_se, betsson, nordicbet, leovegas_se, betfair_ex_eu, matchbook]   # The Odds API -avaimet
+  # Pörssin palkkio voitosta: tehollinen kerroin = 1 + (k − 1)(1 − palkkio). OLETUKSIA, tarkista omalta tililtä.
+  commission: {betfair_ex_eu: 0.05, matchbook: 0.02}
 sharp_reference:
   historical: [pinnacle, betfair_exchange]   # ensisijainen ensin
   fallback: market_avg     # vain jos kumpaakaan ei ole; käyttö merkitään ja raportoidaan
@@ -81,3 +83,12 @@ phase4:
   decorrelation_grid: [0.0, 0.5, 1.0, 2.0, 4.0]
   decorrelation_min_bets: 50                   # c:n valinnassa vähintään näin monta vetoa (EV ≥ 0)
   decorrelation_c: {1x2: 1.0, ou25: 1.0}        # valittu validoinnissa (vähintään 50 vetoa), jäädytetty testiä varten
+
+# Paperikausi (PLAN 9.5–9.6): päivittäinen ajo lukitsee vihjeet ennustelokiin, rahaa ei laiteta.
+paper:
+  window_hours: 30           # lukitaan ottelut, jotka alkavat seuraavan 30 h aikana (päivittäinen ajo -> kerran)
+  min_minutes_before_kickoff: 5
+  sharp_live: [pinnacle, betfair_ex_eu]
+  movement_train_seasons: [2020, 2021, 2022, 2023, 2024, 2025]
+  log_path: paper/forecast_log.jsonl
+  report_dir: paper/reports

@@ -2,7 +2,7 @@
 # Raakavastaukset commitoidaan kansioon snapshots/odds_api/, koska kerroinliikettä ei voi kerätä jälkikäteen.
 # Kulutus: 4 krediittiä per ajo (2 sarjaa × eu × 2 markkinaa), noin 120 kuukaudessa (ilmaistaso 500).
 # Avain luetaan repon salaisuudesta ODDS_API_KEY; sitä ei tulosteta.
-name: Kerroinsnapshot
+name: Kerroinsnapshot ja paperiajo
 
 on:
   schedule:
@@ -19,7 +19,7 @@ concurrency:
 jobs:
   snapshot:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
 
@@ -42,24 +42,35 @@ jobs:
           bagent odds snapshot
           echo "status=$?" >> "$GITHUB_OUTPUT"
 
-      - name: Commitoi snapshotit
+      - name: Paperiajo (lukitse vihjeet) ja CLV-arvio
+        id: paper
+        if: steps.fetch.outputs.status == '0'
+        env:
+          OPENBLAS_NUM_THREADS: "1"
+        run: |
+          set +e
+          bagent data build && bagent paper run && bagent paper evaluate
+          echo "status=$?" >> "$GITHUB_OUTPUT"
+
+      - name: Commitoi snapshotit ja paperiloki
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add snapshots/odds_api
+          [ -d paper ] && git add paper
           if git diff --cached --quiet; then
             echo "Ei uusia snapshotteja"
             exit 0
           fi
-          git commit -m "Kerroinsnapshot $(date -u +%Y-%m-%dT%H:%MZ)"
+          git commit -m "Kerroinsnapshot ja paperiajo $(date -u +%Y-%m-%dT%H:%MZ)"
           for i in 1 2 3; do
             git pull --rebase origin "${GITHUB_REF_NAME}" && git push origin "HEAD:${GITHUB_REF_NAME}" && exit 0
             sleep $((i * 5))
           done
           exit 1
 
-      - name: Tarkista hakutulos
-        if: steps.fetch.outputs.status != '0'
+      - name: Tarkista tulokset
+        if: steps.fetch.outputs.status != '0' || steps.paper.outputs.status != '0'
         run: |
-          echo "bagent odds snapshot palautti koodin ${{ steps.fetch.outputs.status }}; katso lokista tuntemattomat joukkuenimet tai krediitit."
+          echo "snapshot: ${{ steps.fetch.outputs.status }}, paperiajo: ${{ steps.paper.outputs.status }}"
           exit 1
