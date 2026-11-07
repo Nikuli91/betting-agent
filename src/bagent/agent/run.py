@@ -203,5 +203,10 @@ def write_report(rows: list, now: datetime) -> Path:
             bets.to_markdown(index=False) if not bets.empty else "Ei vetoja tällä kierroksella.", "",
             "## Kaikki signaalit (EV ≥ 0)", "",
             df.to_markdown(index=False) if not df.empty else "Ei signaaleja.", ""]
-    path.write_text("\n".join(text), encoding="utf-8")
+    if path.exists():  # saman päivän toinen ajo lisätään perään, aiempaa ei korvata
+        text[0] = f"\n---\n\n# Lisäajo {now:%H:%M} UTC"
+        with open(path, "a", encoding="utf-8") as f:
+            f.write("\n".join(text))
+    else:
+        path.write_text("\n".join(text), encoding="utf-8")
     return path
