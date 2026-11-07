@@ -61,11 +61,14 @@ def _grid_job(args):
     return {**asdict(params), **_score(p, frame)}
 
 
-def tune(seasons: list[int], variant: str = "goals", workers: int = 4) -> pd.DataFrame:
+def tune(seasons: list[int], variant: str = "goals", workers: int = 1) -> pd.DataFrame:
     jobs = [(DCParams(xi=x, tau_early=t, variant=variant), seasons)
             for x, t in itertools.product(GRID["xi"], GRID["tau_early"])]
-    with ProcessPoolExecutor(workers) as ex:
-        rows = list(ex.map(_grid_job, jobs))
+    if workers <= 1:
+        rows = [_grid_job(j) for j in jobs]
+    else:  # aseta OPENBLAS_NUM_THREADS=1, muuten säikeet ylivaraavat ytimet
+        with ProcessPoolExecutor(workers) as ex:
+            rows = list(ex.map(_grid_job, jobs))
     df = pd.DataFrame(rows)
     df["ll_sum"] = df["ll_1x2"] + df["ll_ou"]
     return df.sort_values("ll_sum").reset_index(drop=True)
@@ -110,7 +113,7 @@ def w_table(pa: pd.DataFrame, early: dict, close: dict, frame: pd.DataFrame, n_b
 
 
 def run(con: duckdb.DuckDBPyConnection, out_dir: Path | None = None, n_boot: int = 500,
-        workers: int = 4) -> Path:
+        workers: int = 1) -> Path:
     out_dir = out_dir or ROOT / "reports"
     out_dir.mkdir(parents=True, exist_ok=True)
     s = settings()["splits"]

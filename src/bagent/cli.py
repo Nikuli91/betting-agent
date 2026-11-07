@@ -73,7 +73,7 @@ def eval_phase2() -> None:
 
 
 @eval_app.command("phase3")
-def eval_phase3(n_boot: int = 500, workers: int = 4) -> None:
+def eval_phase3(n_boot: int = 500, workers: int = 1) -> None:
     """Malli A (Dixon–Coles): viritys, walk-forward ja poolipaino w."""
     from bagent.data.store import DB_PATH
     import duckdb
