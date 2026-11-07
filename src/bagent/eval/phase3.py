@@ -112,6 +112,43 @@ def w_table(pa: pd.DataFrame, early: dict, close: dict, frame: pd.DataFrame, n_b
     return pd.DataFrame(rows)
 
 
+def xg_section(con, h, tr, va, early_tr, close_tr, early_va, close_va, pa_goals_va, n_boot, workers) -> str:
+    """xG-variantti: oma viritys opetuskausilla, sitten samat mittarit ja w kuin maalimallille."""
+    grid = tune(settings()["splits"]["train"], variant="xg",
+                workers=workers)
+    best = grid.iloc[0]
+    params = DCParams(xi=float(best["xi"]), tau_early=float(best["tau_early"]), variant="xg")
+    pa_tr = ma.walk_forward(h, tr, params)
+    pa_va = ma.walk_forward(h, va, params)
+    rows = []
+    for split, frame, pa in (("opetus (viritetty tällä)", tr, pa_tr), ("validointi", va, pa_va)):
+        rows.append({"jakso": split, "ennustaja": "malli A (xG)", **_score(pa, frame)})
+    rows.append({"jakso": "validointi", "ennustaja": "malli A (maalit)", **_score(pa_goals_va, va)})
+    w_va = w_table(pa_va, early_va, close_va, va, n_boot)
+    w_tr = w_table(pa_tr, early_tr, close_tr, tr, n_boot)
+    f4 = dict(index=False, floatfmt=".4f")
+    gcols = ["xi", "tau_early", "n", "ll_1x2", "rps_1x2", "ll_ou", "ll_sum"]
+    return f"""Pseudo-Poisson-uskottavuus xG:llä (ρ = 0, koska DC-korjaus on määritelty vain kokonaislukutuloksille).
+xG-lähde: Understat (Kaggle), kattavuus 2020/21–2023/24 100 %. Hyperparametrit viritetty erikseen opetuskausilla.
+
+Valittu: **ξ = {params.xi:g}** (puoliintumisaika {np.log(2) / params.xi:.0f} vrk), **τ_early = {params.tau_early:g}**.
+
+{grid[gcols].head(5).to_markdown(**f4)}
+
+### Mittarit
+
+{pd.DataFrame(rows).to_markdown(**f4)}
+
+### Poolipaino w, validointi 2023/24
+
+{w_va.to_markdown(**f4)}
+
+### Poolipaino w, opetuskaudet
+
+{w_tr.to_markdown(**f4)}
+"""
+
+
 def run(con: duckdb.DuckDBPyConnection, out_dir: Path | None = None, n_boot: int = 500,
         workers: int = 1) -> Path:
     out_dir = out_dir or ROOT / "reports"
@@ -203,7 +240,7 @@ def run(con: duckdb.DuckDBPyConnection, out_dir: Path | None = None, n_boot: int
     # 6. xG-variantti
     cov = xg_coverage(con, s["train"] + s["validation"])
     if cov >= XG_MIN_COVERAGE:
-        xg_note = "xG-variantti ajettava erikseen (TODO)."
+        xg_note = xg_section(con, h, tr, va, early_tr, close_tr, early_va, close_va, pa_va, n_boot, workers)
     else:
         xg_note = (f"**Ei ajettu.** xG-kattavuus kausilla 2020/21–2023/24 on {100 * cov:.1f} %. Kaggle-aineisto "
                    "(`data/raw/understat_kaggle/game_stats.csv`) puuttuu tästä ympäristöstä, koska `data/` ei ole "
