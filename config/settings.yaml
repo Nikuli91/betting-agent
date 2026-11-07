@@ -1,0 +1,62 @@
+leagues:
+  EPL:
+    football_data: E0
+    feeder: E1            # nousijoiden Elo lasketaan alemmalta sarjatasolta
+    odds_api: soccer_epl
+  BUNDESLIGA:
+    football_data: D1
+    feeder: D2
+    odds_api: soccer_germany_bundesliga
+seasons_history: 6
+first_history_season: 2020   # 2020/21
+current_season: 2026         # 2026/27
+elo_warmup_first_season: 2015
+source_timezone: Europe/London  # football-data.co.uk:n kellonajat (todennettu, ks. docs/data_sources.md)
+
+bankroll_split: {core: 0.90, big_wins: 0.10}   # big_wins = yläraja; sitova on monthly_budget_eur
+core:
+  ev_threshold: {h2h: 0.04, totals: 0.03}
+  kelly_fraction: 0.25
+  max_stake_per_bet: 0.015
+  max_stake_per_round: 0.05
+  divergence_warning_pp: 8
+big_wins:
+  enabled: false                 # vasta ytimen paperikauden portin jälkeen
+  monthly_budget_eur: 50
+  acca_max_legs: 4
+  acca_fixed_stake_eur: 5
+  require_positive_ev: true
+devig_method: power
+bookmakers:
+  sharp: [pinnacle, betfair_ex_eu]
+  user: [veikkaus]
+sharp_reference:
+  historical: [pinnacle, betfair_exchange]   # ensisijainen ensin
+  fallback: market_avg     # vain jos kumpaakaan ei ole; käyttö merkitään ja raportoidaan
+schedule:
+  morning_run: "09:00"
+  lock_minutes_before_kickoff: 60
+
+# available_at-arviot (ks. docs/data_sources.md). Varovaisia eli myöhäisiä.
+availability:
+  early_odds_collection_local_time: "18:00"   # pe/ti "afternoon" -> klo 18 Lontoon aikaa
+  early_odds_min_minutes_before_kickoff: 90   # < lukitus (60 min), jotta backtest voi käyttää
+  result_minutes_after_kickoff: 150
+  xg_minutes_after_kickoff: 1440
+
+http:
+  user_agent: "bagent/0.1 (research; polite caching)"
+  delay_seconds: 1.5
+  current_season_max_age_hours: 12
+
+# Ajallinen jako (PLAN 7). Testijakso ajetaan kerran, ei viritystä sen perusteella.
+splits:
+  train: [2020, 2021, 2022]
+  validation: [2023]
+  test: [2024, 2025]
+
+# Vaiheen 2 katediagnostiikka: välittäjät, joiden kate on lähellä käyttäjän välittäjää.
+# Veikkauksen omaa katetta ei ole historiallisessa datassa; synteettiset katteet kattavat vaihtelun.
+margin_diagnostic:
+  soft_books: [bet365, betandwin, william_hill]
+  synthetic_margins: [0.03, 0.05, 0.07, 0.09, 0.11]
