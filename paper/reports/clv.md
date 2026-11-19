@@ -2,7 +2,7 @@
 
 CLV = paras kerroin käyttäjän välittäjillä (pörsseissä palkkio vähennetty) · terävä katteeton sulkeutuminen − 1.
 Sulkeutuminen football-datasta (Pinnacle → Betfair Exchange → markkinakeskiarvo). LV = bootstrap ottelupäivittäin.
-Signaaleja 81, joista 0 odottaa sulkeutumiskerrointa. Arvioituja paperivetoja 3 (portti: ≥ 300,
+Signaaleja 87, joista 6 odottaa sulkeutumiskerrointa. Arvioituja paperivetoja 3 (portti: ≥ 300,
 keskimääräinen CLV > 0 ja 95 %:n alaraja > 0).
 
 | strategia         | markkina   | joukko             |   n | CLV ka.   | 95 % LV        |   ka. kerroin | välittäjät                                             |
